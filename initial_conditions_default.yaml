@@ -1,0 +1,21 @@
+# Default initial conditions for the project
+# These values are safe test defaults — adjust as needed for real use
+
+simulation:
+  steps: 100
+  timestep: 0.1
+  seed: 42
+
+environment:
+  temperature: 298.15     # Kelvin
+  pressure: 1.0           # atm
+  humidity: 0.50          # fraction (0–1)
+
+entities:
+  - name: "AgentA"
+    position: [0.0, 0.0, 0.0]
+    velocity: [1.0, 0.0, 0.0]
+
+  - name: "AgentB"
+    position: [5.0, 5.0, 0.0]
+    velocity: [-1.0, 0.0, 0.0]
