@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Workspace Setup – README</title>
+<style>
+  :root { --fg:#111; --muted:#555; --bg:#fff; --border:#e6e6e6; --code:#0b1021; }
+  body { font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: var(--fg); background: var(--bg); margin: 2rem auto; max-width: 900px; padding: 0 1rem; }
+  h1,h2,h3 { line-height: 1.25; margin: 2rem 0 0.75rem; }
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.15rem; }
+  p, li { color: var(--fg); }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+  pre { background:#f7f7f9; border:1px solid var(--border); padding:1rem; border-radius:8px; overflow:auto; }
+  code { background:#f2f2f6; padding:0.15em 0.35em; border-radius:6px; }
+  .muted { color: var(--muted); }
+  .card { border:1px solid var(--border); border-radius:10px; padding:1rem; background:#fff; }
+  .grid { display:grid; gap:1rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  hr { border:0; border-top:1px solid var(--border); margin:2rem 0; }
+  a { color:#0b5fff; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  ul { margin: 0.5rem 0 0.5rem 1.25rem; }
+</style>
+</head>
+<body>
+
+<h1>VS Code Python Workspace Setup</h1>
+<p class="muted">Automated cloning, virtualenv, VS Code configuration (Copilot disabled), and initial file preparation.</p>
+
+<div class="card">
+  <strong>What this script does:</strong>
+  <ul>
+    <li>Clones a repo via <code>git@</code> (SSH) when a repo URL is provided.</li>
+    <li>Creates an empty <code>secrets.toml</code> (if missing).</li>
+    <li>Copies <code>initial_conditions_default.yaml</code> → <code>initial_conditions.yaml</code> (if source exists).</li>
+    <li>Creates <code>.vscode/settings.json</code> that disables Copilot and points VS Code to <code>.venv</code>.</li>
+    <li>Creates <code>.venv</code>, installs <code>requirements.txt</code> (if present), and wires terminals to use it.</li>
+    <li>Works on Windows, macOS, and Linux from any path. Safe to re-run.</li>
+  </ul>
+</div>
+
+<h2>Prerequisites</h2>
+<ul>
+  <li><strong>Git</strong> (in your PATH)</li>
+  <li><strong>Python 3.8+</strong> (the interpreter you want for the venv)</li>
+  <li><strong>VS Code</strong> + the official <em>Python</em> extension</li>
+  <li><strong>SSH access</strong> to your repo (e.g., GitHub SSH keys set up)</li>
+</ul>
+
+<h2>Quickstart</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Option A — Bootstrap (clone + setup)</h3>
+    <p>From any folder, run the script to clone via SSH and fully set up the workspace:</p>
+<pre><code># macOS / Linux
+python3 setup_workspace.py --repo git@github.com:your-org/your-repo.git --dest my-project
+
+# Windows (PowerShell)
+py setup_workspace.py --repo git@github.com:your-org/your-repo.git --dest my-project
+</code></pre>
+    <p>Then open the folder in VS Code:</p>
+<pre><code># macOS / Linux
+code my-project
+
+# Windows
+code .\my-project
+</code></pre>
+  </div>
+
+  <div class="card">
+    <h3>Option B — Already cloned? (setup only)</h3>
+    <p>Run from the repo root (script can live inside the repo):</p>
+<pre><code># macOS / Linux
+python3 setup_workspace.py
+
+# Windows (PowerShell)
+py setup_workspace.py
+</code></pre>
+  </div>
+</div>
+
+<h2>How it configures VS Code</h2>
+<ul>
+  <li><code>.vscode/settings.json</code> disables GitHub Copilot (inline &amp; chat) for this workspace.</li>
+  <li>Sets <code>python.defaultInterpreterPath</code> to <code>.venv</code> so the Python extension uses it for Run/Debug.</li>
+  <li>Configures integrated terminals to inherit <code>.venv</code> via <code>PATH</code> and <code>VIRTUAL_ENV</code>.</li>
+  <li>Provides a <code>.vscode/launch.json</code> entry “Python: Current File”.</li>
+</ul>
+
+<h2>Common usage examples</h2>
+
+<h3>Create / refresh the workspace</h3>
+<pre><code># Bootstrap to a new folder (recommended on first use)
+python3 setup_workspace.py --repo git@github.com:your-org/your-repo.git --dest my-project
+
+# Re-run anytime inside the repo root to refresh settings / venv
+python3 setup_workspace.py
+</code></pre>
+
+<h3>Run your project scripts</h3>
+<p>After setup, the VS Code Python extension should auto-select <code>.venv</code>. You can:</p>
+<ul>
+  <li>Use the “Run Python File” button in the editor.</li>
+  <li>Use the “Python: Current File” launch configuration from the Run and Debug panel.</li>
+  <li>Run from the integrated terminal (it inherits the venv by default):</li>
+</ul>
+<pre><code># macOS / Linux (in VS Code terminal)
+python your_script.py
+
+# Windows (in VS Code terminal)
+python your_script.py
+</code></pre>
+
+<h2>Files the script manages</h2>
+<ul>
+  <li><code>secrets.toml</code> — created empty if missing; commit policy is up to you (often ignored via <code>.gitignore</code>).</li>
+  <li><code>initial_conditions.yaml</code> — created from <code>initial_conditions_default.yaml</code> if present and target is missing.</li>
+  <li><code>.vscode/settings.json</code> — (re)written/merged to disable Copilot and set interpreter / terminal env.</li>
+  <li><code>.vscode/launch.json</code> — adds a basic “Python: Current File” config.</li>
+  <li><code>.venv/</code> — created if missing; installs <code>requirements.txt</code> if present.</li>
+</ul>
+
+<h2>Verifying your setup</h2>
+<ol>
+  <li>Open the folder in VS Code (<code>code .</code>).</li>
+  <li>Check the selected interpreter (bottom-right, or Command Palette → “Python: Select Interpreter”) → it should point to <code>.venv</code>.</li>
+  <li>Open a new integrated terminal and run <code>python -V</code> and <code>pip -V</code> to confirm they resolve from <code>.venv</code>.</li>
+  <li>Run a script (F5 or “Run Python File”).</li>
+</ol>
+
+<h2>Troubleshooting</h2>
+<ul>
+  <li><strong>Git not found</strong> — Install Git and ensure <code>git --version</code> works in your shell.</li>
+  <li><strong>SSH permission denied</strong> — Make sure your SSH keys are added and you have repo access:
+<pre><code>ssh -T git@github.com</code></pre>
+  </li>
+  <li><strong>Wrong Python selected</strong> — Re-run setup and/or explicitly pick the <code>.venv</code> interpreter in VS Code.</li>
+  <li><strong>requirements.txt missing</strong> — The script skips dependency install if it can’t find <code>requirements.txt</code>.</li>
+  <li><strong>Windows “py” vs “python”</strong> — On Windows, prefer <code>py</code>; if you use <code>python</code>, ensure it points to the desired version.</li>
+</ul>
+
+<h2>FAQ</h2>
+<p><strong>Q: Can I commit <code>.vscode</code>?</strong><br />
+A: Yes. These are workspace-scoped settings. Teams commonly commit them for consistent behavior.</p>
+
+<p><strong>Q: Will it overwrite existing files?</strong><br />
+A: It won’t overwrite <code>secrets.toml</code> or <code>initial_conditions.yaml</code> if they already exist. It merges <code>.vscode/settings.json</code> keys it manages.</p>
+
+<p class="muted">© <span id="year"></span> – Workspace setup helper.</p>
+<script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+</body>
+</html>
