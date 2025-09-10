@@ -129,20 +129,42 @@ def write_vscode(repo_root: Path):
 
     # Disable Copilot features for this workspace
     settings = {
-        # GitHub Copilot (inline + chat) fully off in this workspace
-        "github.copilot.enable": {"*": False, "plaintext": False, "markdown": False, "scminput": False},
-        "github.copilot.inlineSuggest.enable": False,
-        "github.copilot.chat.enable": False,
-
-        # Python extension: point to .venv interpreter + auto-activate in terminals
-        "python.defaultInterpreterPath": str(venv_python).replace(str(repo_root), "${workspaceFolder}"),
-        "python.terminal.activateEnvironment": True,
-
-        # Make integrated terminals inherit the venv by default (per-OS)
-        "terminal.integrated.env.windows": term_env_windows,
-        "terminal.integrated.env.osx": term_env_unix,
-        "terminal.integrated.env.linux": term_env_unix,
+      # ── Disable ALL Copilot code suggestions ─────────────────────────────────────
+      "github.copilot.enable": { "*": false, "plaintext": false, "markdown": false, "scminput": false },
+      "github.copilot.nextEditSuggestions.enabled": false,
+      "editor.inlineSuggest.edits.allowCodeShifting": "never",
+    
+      # ── Hide Copilot UI entry points ─────────────────────────────────────────────
+      "chat.commandCenter.enabled": false,                           // remove Copilot menu from title bar
+      "github.copilot.inlineSuggest.enable": false,                  // legacy toggle (belt + suspenders)
+    
+      # ── Turn OFF Copilot Chat and anything that could reach your files ──────────
+      "chat.agent.enabled": false,                                   // disable Agent mode entirely
+      "chat.mcp.enabled": false,                                     // block MCP tool integrations
+      "github.copilot.chat.codesearch.enabled": false,               // prevent #codebase remote/local search
+      "github.copilot.chat.editor.temporalContext.enabled": false,   // no “recent files” context
+      "github.copilot.chat.edits.suggestRelatedFilesFromGitHistory": false,
+      "github.copilot.chat.newWorkspaceCreation.enabled": false,
+      "github.copilot.chat.startDebugging.enabled": false,
+      "github.copilot.chat.copilotDebugCommand.enabled": false,
+      "github.copilot.chat.generateTests.codeLens": false,
+      "github.copilot.chat.setupTests.enabled": false,
+      "github.copilot.chat.codeGeneration.useInstructionFiles": false,
+      "chat.promptFiles": false,
+      "chat.modeFilesLocations": {},
+    
+      # ── Optional: keep the Copilot/AI stuff out of Settings UX & noise ──────────
+      "workbench.settings.showAISearchToggle": false,
+      "search.searchView.semanticSearchBehavior": "manual",
+    
+      # ── Your existing Python/venv settings (keep these) ──────────────────────────
+      "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+      "python.terminal.activateEnvironment": true,
+      "terminal.integrated.env.linux":   { "VIRTUAL_ENV": "${workspaceFolder}/.venv", "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}" },
+      "terminal.integrated.env.osx":     { "VIRTUAL_ENV": "${workspaceFolder}/.venv", "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}" },
+      "terminal.integrated.env.windows": { "VIRTUAL_ENV": "${workspaceFolder}\\.venv", "PATH": "${workspaceFolder}\\.venv\\Scripts;${env:PATH}" }
     }
+
 
     # Merge with existing settings if present
     if settings_path.exists():
