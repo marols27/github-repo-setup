@@ -8,16 +8,6 @@ Usage:
 
   - Setup only (already inside repo):
       python setup_workspace.py
-
-What it does:
-  * Optionally clones the repo via SSH to --dest (or repo name) if --repo is given
-  * Ensures an empty secrets.toml exists
-  * Copies initial_conditions_default.yaml -> initial_conditions.yaml if source exists
-  * Creates .vscode/settings.json:
-      - Disables all GitHub Copilot features in this workspace
-      - Points Python extension at the .venv interpreter
-      - Makes integrated terminals use the .venv by default
-  * Creates .venv and installs requirements.txt if present
 """
 
 import argparse
@@ -29,17 +19,25 @@ import subprocess
 import sys
 from pathlib import Path
 
+
 def run(cmd, cwd=None, check=True):
     print(f"→ Running: {' '.join(cmd)}" + (f"  (cwd={cwd})" if cwd else ""))
     result = subprocess.run(cmd, cwd=cwd, check=check)
     return result.returncode
 
+
 def have_git():
     try:
-        subprocess.run(["git", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        subprocess.run(
+            ["git", "--version"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True,
+        )
         return True
     except Exception:
         return False
+
 
 def clone_repo(repo_ssh: str, dest_dir: Path) -> Path:
     if not have_git():
@@ -53,6 +51,7 @@ def clone_repo(repo_ssh: str, dest_dir: Path) -> Path:
     run(["git", "clone", repo_ssh, str(dest_dir)])
     return dest_dir
 
+
 def detect_repo_root(start: Path) -> Path | None:
     p = start.resolve()
     for _ in range(5):
@@ -63,6 +62,7 @@ def detect_repo_root(start: Path) -> Path | None:
         p = p.parent
     return None
 
+
 def ensure_secrets(repo_root: Path):
     secrets = repo_root / "secrets.toml"
     if not secrets.exists():
@@ -70,6 +70,7 @@ def ensure_secrets(repo_root: Path):
         print(f"✅ Created empty {secrets.relative_to(repo_root)}")
     else:
         print(f"ℹ️ {secrets.relative_to(repo_root)} already exists; leaving it as-is.")
+
 
 def copy_initial_conditions(repo_root: Path):
     src = repo_root / "initial_conditions_default.yaml"
@@ -83,18 +84,19 @@ def copy_initial_conditions(repo_root: Path):
     else:
         print("ℹ️ initial_conditions_default.yaml not found; skipping copy.")
 
+
 def python_in_venv(repo_root: Path) -> Path:
     if platform.system().lower().startswith("win"):
         return repo_root / ".venv" / "Scripts" / "python.exe"
     else:
         return repo_root / ".venv" / "bin" / "python"
 
+
 def create_venv_and_install(repo_root: Path):
     venv_python = python_in_venv(repo_root)
     venv_dir = venv_python.parent.parent
 
     if not venv_dir.exists():
-        # Prefer the same interpreter running this script
         base_py = Path(sys.executable)
         print(f"Creating venv with {base_py}")
         run([str(base_py), "-m", "venv", str(venv_dir)])
@@ -111,60 +113,64 @@ def create_venv_and_install(repo_root: Path):
     else:
         print("ℹ️ No requirements.txt found; skipping dependency install.")
 
+
 def write_vscode(repo_root: Path):
     vscode = repo_root / ".vscode"
     vscode.mkdir(exist_ok=True)
     settings_path = vscode / "settings.json"
 
     venv_python = python_in_venv(repo_root)
-    # terminal env so any new terminal picks up the venv by default
+
     term_env_windows = {
         "VIRTUAL_ENV": "${workspaceFolder}\\.venv",
-        "PATH": "${workspaceFolder}\\.venv\\Scripts;${env:PATH}"
+        "PATH": "${workspaceFolder}\\.venv\\Scripts;${env:PATH}",
     }
     term_env_unix = {
         "VIRTUAL_ENV": "${workspaceFolder}/.venv",
-        "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}"
+        "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}",
     }
 
-    # Disable Copilot features for this workspace
+    # FULL Copilot shutdown + Python defaults
     settings = {
-      # ── Disable ALL Copilot code suggestions ─────────────────────────────────────
-      "github.copilot.enable": { "*": false, "plaintext": false, "markdown": false, "scminput": false },
-      "github.copilot.nextEditSuggestions.enabled": false,
-      "editor.inlineSuggest.edits.allowCodeShifting": "never",
-    
-      # ── Hide Copilot UI entry points ─────────────────────────────────────────────
-      "chat.commandCenter.enabled": false,                           // remove Copilot menu from title bar
-      "github.copilot.inlineSuggest.enable": false,                  // legacy toggle (belt + suspenders)
-    
-      # ── Turn OFF Copilot Chat and anything that could reach your files ──────────
-      "chat.agent.enabled": false,                                   // disable Agent mode entirely
-      "chat.mcp.enabled": false,                                     // block MCP tool integrations
-      "github.copilot.chat.codesearch.enabled": false,               // prevent #codebase remote/local search
-      "github.copilot.chat.editor.temporalContext.enabled": false,   // no “recent files” context
-      "github.copilot.chat.edits.suggestRelatedFilesFromGitHistory": false,
-      "github.copilot.chat.newWorkspaceCreation.enabled": false,
-      "github.copilot.chat.startDebugging.enabled": false,
-      "github.copilot.chat.copilotDebugCommand.enabled": false,
-      "github.copilot.chat.generateTests.codeLens": false,
-      "github.copilot.chat.setupTests.enabled": false,
-      "github.copilot.chat.codeGeneration.useInstructionFiles": false,
-      "chat.promptFiles": false,
-      "chat.modeFilesLocations": {},
-    
-      # ── Optional: keep the Copilot/AI stuff out of Settings UX & noise ──────────
-      "workbench.settings.showAISearchToggle": false,
-      "search.searchView.semanticSearchBehavior": "manual",
-    
-      # ── Your existing Python/venv settings (keep these) ──────────────────────────
-      "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-      "python.terminal.activateEnvironment": true,
-      "terminal.integrated.env.linux":   { "VIRTUAL_ENV": "${workspaceFolder}/.venv", "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}" },
-      "terminal.integrated.env.osx":     { "VIRTUAL_ENV": "${workspaceFolder}/.venv", "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}" },
-      "terminal.integrated.env.windows": { "VIRTUAL_ENV": "${workspaceFolder}\\.venv", "PATH": "${workspaceFolder}\\.venv\\Scripts;${env:PATH}" }
-    }
+        # ── Disable ALL Copilot completions ──
+        "github.copilot.enable": {
+            "*": False,
+            "plaintext": False,
+            "markdown": False,
+            "scminput": False,
+        },
+        "github.copilot.nextEditSuggestions.enabled": False,
+        "editor.inlineSuggest.edits.allowCodeShifting": "never",
+        "github.copilot.inlineSuggest.enable": False,
 
+        # ── Disable Copilot Chat & indexing ──
+        "chat.commandCenter.enabled": False,
+        "chat.agent.enabled": False,
+        "chat.mcp.enabled": False,
+        "github.copilot.chat.enable": False,
+        "github.copilot.chat.codesearch.enabled": False,
+        "github.copilot.chat.editor.temporalContext.enabled": False,
+        "github.copilot.chat.edits.suggestRelatedFilesFromGitHistory": False,
+        "github.copilot.chat.newWorkspaceCreation.enabled": False,
+        "github.copilot.chat.startDebugging.enabled": False,
+        "github.copilot.chat.copilotDebugCommand.enabled": False,
+        "github.copilot.chat.generateTests.codeLens": False,
+        "github.copilot.chat.setupTests.enabled": False,
+        "github.copilot.chat.codeGeneration.useInstructionFiles": False,
+        "chat.promptFiles": False,
+        "chat.modeFilesLocations": {},
+
+        # ── Hide AI-related settings in UI ──
+        "workbench.settings.showAISearchToggle": False,
+        "search.searchView.semanticSearchBehavior": "manual",
+
+        # ── Python / venv config ──
+        "python.defaultInterpreterPath": str(venv_python).replace(str(repo_root), "${workspaceFolder}"),
+        "python.terminal.activateEnvironment": True,
+        "terminal.integrated.env.windows": term_env_windows,
+        "terminal.integrated.env.osx": term_env_unix,
+        "terminal.integrated.env.linux": term_env_unix,
+    }
 
     # Merge with existing settings if present
     if settings_path.exists():
@@ -179,7 +185,7 @@ def write_vscode(repo_root: Path):
     settings_path.write_text(json.dumps(merged, indent=2), encoding="utf-8")
     print(f"✅ Wrote {settings_path.relative_to(repo_root)}")
 
-    # Provide a Python launch config that uses the chosen interpreter for "Run/Debug"
+    # Basic Python launch config
     launch_path = vscode / "launch.json"
     launch = {
         "version": "0.2.0",
@@ -191,31 +197,13 @@ def write_vscode(repo_root: Path):
                 "program": "${file}",
                 "console": "integratedTerminal",
                 "justMyCode": True,
-                # The Python extension respects python.defaultInterpreterPath,
-                # but we also set env to ensure venv is active when running.
-                "env": {
-                    "VIRTUAL_ENV": "${workspaceFolder}/.venv"
-                }
+                "env": {"VIRTUAL_ENV": "${workspaceFolder}/.venv"},
             }
-        ]
+        ],
     }
     launch_path.write_text(json.dumps(launch, indent=2), encoding="utf-8")
     print(f"✅ Wrote {launch_path.relative_to(repo_root)}")
 
-def maybe_copy_self_into_repo(repo_root: Path):
-    """
-    If this script is NOT already in the repo root, copy it there as setup_workspace.py
-    so the project always ships with it.
-    """
-    here = Path(__file__).resolve()
-    dest = repo_root / "setup_workspace.py"
-    try:
-        if here != dest.resolve():
-            if not dest.exists():
-                shutil.copy2(here, dest)
-                print(f"✅ Placed a copy of this script at {dest.relative_to(repo_root)}")
-    except Exception as e:
-        print(f"ℹ️ Could not copy script into repo: {e}")
 
 def main():
     parser = argparse.ArgumentParser(description="VS Code Python workspace setup")
@@ -224,24 +212,20 @@ def main():
     args = parser.parse_args()
 
     if args.repo:
-        # Determine dest directory
         if args.dest:
             dest = Path(args.dest).resolve()
         else:
-            # derive folder name from repo URL
             name = args.repo.rstrip("/").split("/")[-1]
             if name.endswith(".git"):
                 name = name[:-4]
             dest = (Path.cwd() / name).resolve()
         repo_root = clone_repo(args.repo, dest)
     else:
-        # No repo provided—assume we're inside a repo or below one.
         repo_root = detect_repo_root(Path.cwd())
         if not repo_root:
             sys.exit("Error: Not inside a Git repository and no --repo was provided.")
 
     print(f"📁 Working in repo: {repo_root}")
-    maybe_copy_self_into_repo(repo_root)
     ensure_secrets(repo_root)
     copy_initial_conditions(repo_root)
     create_venv_and_install(repo_root)
@@ -249,6 +233,7 @@ def main():
 
     print("\n🎉 Workspace setup complete.")
     print("Open the folder in VS Code and it should auto-select .venv and have Copilot disabled for this workspace.")
+
 
 if __name__ == "__main__":
     main()
