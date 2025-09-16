@@ -12,12 +12,12 @@ Usage:
 
 import argparse
 import json
-import os
 import platform
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 
 def run(cmd, cwd=None, check=True):
@@ -26,7 +26,7 @@ def run(cmd, cwd=None, check=True):
     return result.returncode
 
 
-def have_git():
+def have_git() -> bool:
     try:
         subprocess.run(
             ["git", "--version"],
@@ -52,7 +52,7 @@ def clone_repo(repo_ssh: str, dest_dir: Path) -> Path:
     return dest_dir
 
 
-def detect_repo_root(start: Path) -> Path | None:
+def detect_repo_root(start: Path) -> Optional[Path]:
     p = start.resolve()
     for _ in range(5):
         if (p / ".git").is_dir():
@@ -63,7 +63,7 @@ def detect_repo_root(start: Path) -> Path | None:
     return None
 
 
-def ensure_secrets(repo_root: Path):
+def ensure_secrets(repo_root: Path) -> None:
     secrets = repo_root / "secrets.toml"
     if not secrets.exists():
         secrets.write_text("", encoding="utf-8")
@@ -72,7 +72,7 @@ def ensure_secrets(repo_root: Path):
         print(f"ℹ️ {secrets.relative_to(repo_root)} already exists; leaving it as-is.")
 
 
-def copy_initial_conditions(repo_root: Path):
+def copy_initial_conditions(repo_root: Path) -> None:
     src = repo_root / "initial_conditions_default.yaml"
     dst = repo_root / "initial_conditions.yaml"
     if src.exists():
@@ -92,7 +92,7 @@ def python_in_venv(repo_root: Path) -> Path:
         return repo_root / ".venv" / "bin" / "python"
 
 
-def create_venv_and_install(repo_root: Path):
+def create_venv_and_install(repo_root: Path) -> None:
     venv_python = python_in_venv(repo_root)
     venv_dir = venv_python.parent.parent
 
@@ -114,13 +114,47 @@ def create_venv_and_install(repo_root: Path):
         print("ℹ️ No requirements.txt found; skipping dependency install.")
 
 
-def write_vscode(repo_root: Path):
+def write_extensions_json(vscode_dir: Path) -> None:
+    """
+    Create .vscode/extensions.json to explicitly discourage Copilot extensions.
+    This doesn't disable an installed extension, but VS Code will warn against enabling them here.
+    """
+    path = vscode_dir / "extensions.json"
+    payload = {
+        "recommendations": [
+            "ms-python.pylint"
+        ],
+        "unwantedRecommendations": [
+            "GitHub.copilot",
+            "GitHub.copilot-chat",
+        ],
+    }
+    try:
+        if path.exists():
+            # merge conservatively: keep existing unwantedRecommendations and add ours
+            existing = json.loads(path.read_text(encoding="utf-8"))
+        else:
+            existing = {}
+    except Exception:
+        existing = {}
+
+    # Merge logic
+    unwanted = set(existing.get("unwantedRecommendations", [])) | set(payload["unwantedRecommendations"])
+    recommendations = existing.get("recommendations", [])
+    merged = {"recommendations": recommendations, "unwantedRecommendations": sorted(unwanted)}
+
+    path.write_text(json.dumps(merged, indent=2), encoding="utf-8")
+    print(f"✅ Wrote {path.relative_to(vscode_dir.parent)}")
+
+
+def write_vscode(repo_root: Path) -> None:
     vscode = repo_root / ".vscode"
     vscode.mkdir(exist_ok=True)
     settings_path = vscode / "settings.json"
 
     venv_python = python_in_venv(repo_root)
 
+    # Terminal env so any new terminal picks up the venv by default
     term_env_windows = {
         "VIRTUAL_ENV": "${workspaceFolder}\\.venv",
         "PATH": "${workspaceFolder}\\.venv\\Scripts;${env:PATH}",
@@ -130,9 +164,9 @@ def write_vscode(repo_root: Path):
         "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}",
     }
 
-    # FULL Copilot shutdown + Python defaults
+    # FULL Copilot shutdown + Python defaults (all values are valid Python literals)
     settings = {
-        # ── Disable ALL Copilot completions ──
+        # Disable ALL Copilot completions
         "github.copilot.enable": {
             "*": False,
             "plaintext": False,
@@ -143,7 +177,7 @@ def write_vscode(repo_root: Path):
         "editor.inlineSuggest.edits.allowCodeShifting": "never",
         "github.copilot.inlineSuggest.enable": False,
 
-        # ── Disable Copilot Chat & indexing ──
+        # Disable Copilot Chat & indexing
         "chat.commandCenter.enabled": False,
         "chat.agent.enabled": False,
         "chat.mcp.enabled": False,
@@ -160,11 +194,11 @@ def write_vscode(repo_root: Path):
         "chat.promptFiles": False,
         "chat.modeFilesLocations": {},
 
-        # ── Hide AI-related settings in UI ──
+        # Hide AI-related settings in UI (noise reduction)
         "workbench.settings.showAISearchToggle": False,
         "search.searchView.semanticSearchBehavior": "manual",
 
-        # ── Python / venv config ──
+        # Python / venv config
         "python.defaultInterpreterPath": str(venv_python).replace(str(repo_root), "${workspaceFolder}"),
         "python.terminal.activateEnvironment": True,
         "terminal.integrated.env.windows": term_env_windows,
@@ -172,7 +206,7 @@ def write_vscode(repo_root: Path):
         "terminal.integrated.env.linux": term_env_unix,
     }
 
-    # Merge with existing settings if present
+    # Merge with existing settings if present (ours overwrite)
     if settings_path.exists():
         try:
             existing = json.loads(settings_path.read_text(encoding="utf-8"))
@@ -185,7 +219,7 @@ def write_vscode(repo_root: Path):
     settings_path.write_text(json.dumps(merged, indent=2), encoding="utf-8")
     print(f"✅ Wrote {settings_path.relative_to(repo_root)}")
 
-    # Basic Python launch config
+    # Optional: basic Python launch config
     launch_path = vscode / "launch.json"
     launch = {
         "version": "0.2.0",
@@ -204,6 +238,9 @@ def write_vscode(repo_root: Path):
     launch_path.write_text(json.dumps(launch, indent=2), encoding="utf-8")
     print(f"✅ Wrote {launch_path.relative_to(repo_root)}")
 
+    # Also write extensions.json to discourage Copilot
+    write_extensions_json(vscode)
+
 
 def main():
     parser = argparse.ArgumentParser(description="VS Code Python workspace setup")
@@ -212,15 +249,18 @@ def main():
     args = parser.parse_args()
 
     if args.repo:
+        # Determine destination directory
         if args.dest:
             dest = Path(args.dest).resolve()
         else:
+            # derive folder name from repo URL
             name = args.repo.rstrip("/").split("/")[-1]
             if name.endswith(".git"):
                 name = name[:-4]
             dest = (Path.cwd() / name).resolve()
         repo_root = clone_repo(args.repo, dest)
     else:
+        # No repo provided—assume we're inside a repo or below one.
         repo_root = detect_repo_root(Path.cwd())
         if not repo_root:
             sys.exit("Error: Not inside a Git repository and no --repo was provided.")
