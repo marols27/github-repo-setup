@@ -145,10 +145,8 @@ def ensure_secrets(repo_root: Path) -> None:
 
 def copy_initial_conditions(repo_root: Path) -> None:
     """
-    Copy default initial conditions to a working file if needed.
-
-    Copies `initial_conditions_default.yaml` → `initial_conditions.yaml`
-    only if the source exists and the target does not.
+    Search the repository for all `initial_conditions_default.yaml` files and,
+    for each, copy it to `initial_conditions.yaml` in the same directory.
 
     Parameters
     ----------
@@ -159,16 +157,20 @@ def copy_initial_conditions(repo_root: Path) -> None:
     -------
     None
     """
-    src: Path = repo_root / "initial_conditions_default.yaml"
-    dst: Path = repo_root / "initial_conditions.yaml"
-    if src.exists():
+    matches: List[Path] = list(repo_root.rglob("initial_conditions_default.yaml"))
+
+    if not matches:
+        print("ℹ️ No initial_conditions_default.yaml found anywhere; skipping copy.")
+        return
+
+    for src in matches:
+        dst: Path = src.with_name("initial_conditions.yaml")
         if not dst.exists():
             shutil.copy2(src, dst)
-            print(f"✅ Copied {src.name} → {dst.name}")
+            print(f"✅ Copied {src.relative_to(repo_root)} → {dst.name}")
         else:
-            print(f"ℹ️ {dst.name} already exists; leaving it as-is.")
-    else:
-        print("ℹ️ initial_conditions_default.yaml not found; skipping copy.")
+            print(f"ℹ️ {dst.relative_to(repo_root)} already exists; leaving it as-is.")
+
 
 
 def python_in_venv(repo_root: Path) -> Path:
