@@ -1,31 +1,38 @@
 # github-repo-setup
 
-Automated cloning, virtualenv, VS Code configuration (Copilot disabled), and initial file preparation.
+Automates cloning, venv creation, dependency install, and VS Code configuration — with **Copilot disabled** at the workspace level.
 
 ---
 
 ## What this script does
-- Clones a repo via `git@` (SSH) when a repo URL is provided.
-- Creates an empty `secrets.toml` (if missing).
-- Copies `initial_conditions_default.yaml` → `initial_conditions.yaml` (if source exists).
-- Creates `.vscode/settings.json` that disables Copilot and points VS Code to `.venv`.
-- Creates `.venv`, installs `requirements.txt` (if present), and wires terminals to use it.
-- Works on Windows, macOS, and Linux from any path. Safe to re-run.
+
+- **Clone via SSH** (optional): `--repo git@github.com:org/repo.git --dest my-project`
+- **Create secrets & defaults**:
+  - `secrets.toml` (empty if missing)
+  - copy `initial_conditions_default.yaml` → `initial_conditions.yaml` (if present)
+- **Create `.venv`** and install `requirements.txt` (if present)
+- **Configure VS Code**:
+  - `.vscode/settings.json` points Python to `.venv`
+  - **Copilot completions + chat + codebase search/indexing disabled**
+  - `.vscode/launch.json` uses **`debugpy`** for “Python: Current File”
+  - `.vscode/extensions.json` recommends **Pylint** and flags Copilot extensions as **not recommended**
+
+> Note: Workspace settings can’t *uninstall* or *force-disable* an already installed extension.  
+> This setup disables Copilot **features** and clearly discourages enabling those extensions in this workspace.
 
 ---
 
 ## Prerequisites
-- **Git** (in your PATH)  
-- **Python 3.8+** (the interpreter you want for the venv)  
-- **VS Code** + the official *Python* extension  
-- **SSH access** to your repo (e.g., GitHub SSH keys set up)  
+
+- Git
+- Python 3.8+ (the interpreter you want for the venv)
+- VS Code + the official **Python** extension
 
 ---
 
 ## Quickstart
 
-### Option A — Bootstrap (clone + setup)
-From any folder, run the script to clone via SSH and fully set up the workspace:
+### A) Bootstrap (clone + setup)
 
 ```bash
 # macOS / Linux
