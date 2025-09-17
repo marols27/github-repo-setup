@@ -54,21 +54,21 @@ Automates cloning, virtual environment creation, dependency installation, and VS
 
 **Clone + setup (recommended one‑liner):**
 ```powershell
-curl.exe -fsSL https://raw.githubusercontent.com/<USER>/<REPO>/<BRANCH>/setup_workspace.py `
-| py - --repo git@github.com:<ORG>/<PROJECT>.git --dest my-project
+curl.exe -fsSL https://raw.githubusercontent.com/<THIS_USER>/<THIS_REPO>/<THIS_BRANCH>/setup_workspace.py `
+| py - --repo git@github.com:<TARGET_USER_OR_ORG>/<TARGET_REPOSITORY>.git --dest my-project
 ```
 
 **Setup only (already in a cloned repo folder):**
 ```powershell
-curl.exe -fsSL https://raw.githubusercontent.com/<USER>/<REPO>/<BRANCH>/setup_workspace.py | py -
+curl.exe -fsSL https://raw.githubusercontent.com/<THIS_USER>/<THIS_REPO>/<THIS_BRANCH>/setup_workspace.py | py -
 ```
 
 If you don’t have real `curl.exe`, use this fallback:
 ```powershell
-$u="https://raw.githubusercontent.com/<USER>/<REPO>/<BRANCH>/setup_workspace.py"; `
+$u="https://raw.githubusercontent.com/<THIS_USER>/<THIS_REPO>/<THIS_BRANCH>/setup_workspace.py"; `
 $f=Join-Path $env:TEMP ("setup_workspace_{0}.py" -f ([guid]::NewGuid())); `
 Invoke-WebRequest -Uri $u -UseBasicParsing -OutFile $f; `
-py $f --repo git@github.com:<ORG>/<PROJECT>.git --dest my-project; `
+py $f --repo git@github.com:<TARGET_USER_OR_ORG>/<TARGET_REPOSITORY>.git --dest my-project; `
 Remove-Item $f -Force
 ```
 
@@ -78,12 +78,12 @@ Remove-Item $f -Force
 
 **Clone + setup (recommended one‑liner):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<USER>/<REPO>/<BRANCH>/setup_workspace.py | python3 - --repo git@github.com:<ORG>/<PROJECT>.git --dest my-project
+curl -fsSL https://raw.githubusercontent.com/<THIS_USER>/<THIS_REPO>/<THIS_BRANCH>/setup_workspace.py | python3 - --repo git@github.com:<TARGET_USER_OR_ORG>/<TARGET_REPOSITORY>.git --dest my-project
 ```
 
 **Setup only (already in a cloned repo folder):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<USER>/<REPO>/<BRANCH>/setup_workspace.py | python3 -
+curl -fsSL https://raw.githubusercontent.com/<THIS_USER>/<THIS_REPO>/<THIS_BRANCH>/setup_workspace.py | python3 -
 ```
 
 ---
