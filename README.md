@@ -1,4 +1,4 @@
-# VS Code Python Workspace Setup
+# github-repo-setup
 
 Automated cloning, virtualenv, VS Code configuration (Copilot disabled), and initial file preparation.
 
